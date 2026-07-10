@@ -381,6 +381,57 @@ resource "aws_route53_record" "api" {
   }
 }
 
+
+# Create WAF Web ACL for API Gateway
+resource "aws_wafv2_web_acl" "api_gateway_waf" {
+  name        = "${var.service_subdomain}-api-waf"
+  description = "WAF for tech-audit-tool-api API Gateway"
+  scope       = "REGIONAL"
+
+  default_action {
+    block {}
+  }
+
+  rule {
+    name     = "allow-ons-ips"
+    priority = 1
+
+    action {
+      allow {}
+    }
+
+    statement {
+      ip_set_reference_statement {
+        arn = data.terraform_remote_state.sdp_infrastructure.outputs.allowed_ips_ons_only_arn
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "allow-ons-ips"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${var.service_subdomain}-api-waf"
+    sampled_requests_enabled   = true
+  }
+
+  tags = {
+    Project       = var.project_tag
+    TeamOwner     = var.team_owner_tag
+    BusinessOwner = var.business_owner_tag
+  }
+}
+
+# Associate WAF with API Gateway stage
+resource "aws_wafv2_web_acl_association" "api_gateway" {
+  resource_arn = "arn:aws:apigateway:${var.region}::/restapis/${aws_api_gateway_rest_api.main.id}/stages/${aws_api_gateway_stage.main.stage_name}"
+  web_acl_arn  = aws_wafv2_web_acl.api_gateway_waf.arn
+}
+
 # Create ACM certificate
 resource "aws_acm_certificate" "cert" {
   domain_name       = "${var.service_subdomain}.${var.domain}.${var.domain_extension}"

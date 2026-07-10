@@ -32,3 +32,8 @@ output "cloudwatch_log_group_name" {
   description = "Name of the CloudWatch Log Group for API Gateway errors"
   value       = aws_cloudwatch_log_group.api_gateway.name
 }
+
+output "waf_web_acl_arn" {
+  description = "ARN of the WAF Web ACL protecting the API Gateway"
+  value       = aws_wafv2_web_acl.api_gateway_waf.arn
+}
