@@ -16,12 +16,16 @@ fi
 
 cd resource-repo/terraform/storage
 
+echo "Initializing Terraform for storage..."
+
 terraform init -backend-config=env/${env}/backend-${env}.tfbackend -reconfigure
 terraform apply \
 -var "domain=$domain" \
 -auto-approve
 
 cd ../lambda
+
+echo "Initializing Terraform for lambda..."
 
 terraform init -backend-config=env/${env}/backend-${env}.tfbackend -reconfigure
 terraform apply \
@@ -35,6 +39,8 @@ terraform apply \
 -auto-approve
 
 cd ../api_gateway
+
+echo "Initializing Terraform for API Gateway..."
 
 terraform init -backend-config=env/${env}/backend-${env}.tfbackend -reconfigure
 terraform apply \
