@@ -1,4 +1,5 @@
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 aws sts assume-role --output text \
     --role-arn "${aws_role_arn}" \

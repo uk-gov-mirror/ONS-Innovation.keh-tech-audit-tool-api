@@ -1,4 +1,5 @@
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 domain=$(echo "$secrets" | jq -r .domain)
 service_subdomain=$(echo "$secrets" | jq -r .service_subdomain)
