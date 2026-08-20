@@ -22,5 +22,5 @@ else
 fi
 
 fly -t aws-sdp set-pipeline -c concourse/ci.yml -p ${pipeline_name}  -v branch=${branch} -v repo_name=${repo_name} -v env=dev
-echo "Pipeline \"${pipeline_name}\" has been set successfully."
 
+echo "Pipeline \"${pipeline_name}\" has been set successfully."
