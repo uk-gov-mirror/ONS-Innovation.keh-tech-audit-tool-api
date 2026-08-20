@@ -27,10 +27,12 @@ This service is a dependency for the [Tech Audit Tool UI](https://github.com/ONS
     - [Get filtered projects](#get-filtered-projects)
     - [Edit a project](#edit-a-project)
   - [Authorization with Cognito and API Gateway](#authorization-with-cognito-and-api-gateway)
-    - [Deployments with Concourse](#deployments-with-concourse)
+    - [Deployment with Concourse](#deployment-with-concourse)
       - [Allowlisting your IP](#allowlisting-your-ip)
       - [Setting up a pipeline](#setting-up-a-pipeline)
+      - [Prod deployment](#prod-deployment)
       - [Triggering a pipeline](#triggering-a-pipeline)
+      - [Destroying a pipeline](#destroying-a-pipeline)
 
 
 ## Setting up & Running Locally
@@ -513,38 +515,71 @@ This returns your token, which you can use in testing the authentication on the 
 
 The /api/v1/verify route get's the client keys and redirect uri from the bucket.
 
-### Deployments with Concourse
+### Deployment with Concourse
 
 #### Allowlisting your IP
-To setup the deployment pipeline with concourse, you must first allowlist your IP address on the Concourse
-server. IP addresses are flushed everyday at 00:00 so this must be done at the beginning of every working day
-whenever the deployment pipeline needs to be used. Follow the instructions on the Confluence page (SDP Homepage > SDP Concourse > Concourse Login) to
-login. All our pipelines run on sdp-pipeline-prod, whereas sdp-pipeline-dev is the account used for
-changes to Concourse instance itself. Make sure to export all necessary environment variables from sdp-pipeline-prod (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN).
+
+To setup the deployment pipeline with concourse, you must first allowlist your IP address on the Concourse server. IP addresses are flushed everyday at 00:00 so this must be done at the beginning of every working day whenever the deployment pipeline needs to be used.
+
+Instructions on this are available within **KEH's Confluence Space**.
+
+All pipelines run within the `sdp-pipeline-prod` AWS account, whereas `sdp-pipeline-dev` is the account used for testing changes to the Concourse instance itself (i.e. configuration changes, not pipeline changes).
 
 #### Setting up a pipeline
-When setting up our pipelines, we use ecs-infra-user on sdp-dev to be able to interact with our infrastructure on AWS. The credentials for this are stored on
-AWS Secrets Manager so you do not need to set up anything yourself.
+
+Our pipelines use an IAM role within AWS to interact with our infrastructure.
+Credentials/secrets for pipelines are stored within AWS Secrets Manager on the `sdp-pipeline-prod` account, so you do not need to set up anything yourself.
 
 To set the pipeline, run the following script:
+
 ```bash
 chmod u+x ./concourse/scripts/set_pipeline.sh
-./concourse/scripts/set_pipeline.sh KEH-TAT-API
-```
-Note that you only have to run chmod the first time running the script in order to give permissions.
-This script will set the branch and pipeline name to whatever branch you are currently on. It will also set the image tag on ECR to the current commit hash at the time of setting the pipeline.
-
-The pipeline name itself will usually follow a pattern as follows: `<repo-name>-<branch-name>`
-If you wish to set a pipeline for another branch without checking out, you can run the following:
-```bash
-./concourse/scripts/set_pipeline.sh KEH-TAT-API <branch_name>
+./concourse/scripts/set_pipeline.sh
 ```
 
-If the branch you are deploying is "main" or "master", it will trigger a deployment to the sdp-prod environment. To set the ECR image tag, you must draft a Github release pointing to the latest release of the main/master branch that has a tag in the form of vX.Y.Z. Drafting up a release will automatically deploy the latest version of the main/master branch with the associated release tag, but you can also manually trigger a build through the Concourse UI or the terminal prompt.
+**Note:** You only have to run `chmod` the first time running the script in order to give permissions.
+
+This script will set the branch and pipeline name to whatever branch you are currently on.
+It will also set the image tag on ECR to 7 characters of the current branch name if running on a branch other than `main`.
+For `main`, the ECR tag will be the latest release tag on the repository that has semantic versioning(vX.Y.Z).
+
+The pipeline name itself will usually follow a pattern as follows:
+
+- `keh-tech-audit-tool-api-<branch-name>` for any non-main branch.
+  - When following our branching strategy, pipelines are normally postfixed with the Jira ticket number, e.g. `keh-tech-audit-tool-api-KEH-1234`.
+- `keh-tech-audit-tool-api` for the main/master branch.
+
+#### Prod deployment
+
+To deploy to prod, it is required that a Github Release is made on Github. The release is required to follow semantic versioning of vX.Y.Z.
+
+A manual trigger is to be made on the pipeline name `keh-tech-audit-tool-api > deploy-after-github-release` job through the Concourse CI UI. This will create a resource that is required on the `keh-tech-audit-tool-api > release-build-and-push-prod` job. Then the prod deployment job is also through a manual trigger ensuring that prod is only deployed using the latest GitHub release tag in the form of vX.Y.Z and is manually controlled.
+
+More information on our typical deployment patterns in Concourse can be found in our Confluence space.
 
 #### Triggering a pipeline
-Once the pipeline has been set, you can manually trigger a build on the Concourse UI, or run the following command:
+
+Once the pipeline has been set, you can manually trigger a dev build on the Concourse UI, or run the following command for non-main branch deployment:
+
 ```bash
-fly -t aws-sdp trigger-job -j KEH-TAT-API-<branch-name>/build-and-push
+fly -t aws-sdp trigger-job -j keh-tech-audit-tool-api-<branch-name>/deploy-after-github-release-dev
 ```
+
+and for main branch deployment:
+
+```bash
+fly -t aws-sdp trigger-job -j keh-tech-audit-tool-api/deploy-after-github-release-dev
+```
+
+#### Destroying a pipeline
+
+To destroy the pipeline, run the following command:
+
+```bash
+fly -t aws-sdp destroy-pipeline -p keh-tech-audit-tool-api-<branch-name>
+```
+
+**It is unlikely that you will need to destroy a pipeline, but the command is here if needed.**
+
+**Note:** This will not destroy any resources created by Terraform. You must manually destroy these resources using Terraform.
 
