@@ -6,7 +6,10 @@ terraform {
     # region         = "eu-west-2"
     # dynamodb_table = "terraform-state-lock"
   }
+}
 
+locals {
+  account_id = data.aws_caller_identity.current.account_id
 }
 
 # Create the API Gateway REST API
