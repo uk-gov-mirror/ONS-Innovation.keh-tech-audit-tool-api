@@ -6,7 +6,10 @@ terraform {
     # region         = "eu-west-2"
     # dynamodb_table = "terraform-state-lock"
   }
+}
 
+locals {
+  account_id = data.aws_caller_identity.current.account_id
 }
 
 # 1. First create the IAM role
@@ -27,12 +30,12 @@ resource "aws_iam_role" "lambda_execution_role" {
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${var.aws_account_id}:root"
+          AWS = "arn:aws:iam::${local.account_id}:root"
         }
         Condition = {
           ArnLike = {
             "aws:PrincipalArn" = [
-              "arn:aws:iam::${var.aws_account_id}:role/aws-reserved/sso.amazonaws.com/eu-west-2/AWSReservedSSO_Standard_Administrator_Access_*"
+              "arn:aws:iam::${local.account_id}:role/aws-reserved/sso.amazonaws.com/eu-west-2/AWSReservedSSO_Standard_Administrator_Access_*"
             ]
           }
         }
@@ -88,7 +91,7 @@ resource "aws_iam_role_policy" "lambda_additional_permissions" {
         ]
         Resource = [
           data.terraform_remote_state.secrets.outputs.secret_arn,
-          "arn:aws:secretsmanager:${var.region}:${var.aws_account_id}:secret:${var.azure_secret_name}*"
+          "arn:aws:secretsmanager:${var.region}:${local.account_id}:secret:${var.azure_secret_name}*"
         ]
       },
       {
@@ -96,7 +99,7 @@ resource "aws_iam_role_policy" "lambda_additional_permissions" {
         Action = [
           "logs:CreateLogGroup"
         ]
-        Resource = "arn:aws:logs:${var.region}:${var.aws_account_id}:*"
+        Resource = "arn:aws:logs:${var.region}:${local.account_id}:*"
       },
       {
         Effect = "Allow"
@@ -105,7 +108,7 @@ resource "aws_iam_role_policy" "lambda_additional_permissions" {
           "logs:PutLogEvents"
         ]
         Resource = [
-          "arn:aws:logs:${var.region}:${var.aws_account_id}:log-group:/aws/lambda/${var.domain}-${var.service_subdomain}-lambda:*"
+          "arn:aws:logs:${var.region}:${local.account_id}:log-group:/aws/lambda/${var.domain}-${var.service_subdomain}-lambda:*"
         ]
       },
       {
@@ -167,7 +170,7 @@ resource "aws_lambda_function" "tech_audit_lambda" {
   package_type  = "Image"
 
   # Use digest instead of tag (immutable)
-  image_uri = "${var.aws_account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_repository}@${data.aws_ecr_image.lambda_image.image_digest}"
+  image_uri = "${local.account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_repository}@${data.aws_ecr_image.lambda_image.image_digest}"
 
   vpc_config {
     subnet_ids          = data.terraform_remote_state.vpc.outputs.private_subnets
@@ -188,7 +191,7 @@ resource "aws_lambda_function" "tech_audit_lambda" {
       IMAGE_TAG                  = var.container_ver
       AZURE_SECRET_NAME          = var.azure_secret_name
       BRANCH_NAME                = var.branch_name
-      AWS_ACCOUNT_NAME           = var.aws_account_name
+      AWS_ACCOUNT_NAME           = var.domain
     }
   }
 

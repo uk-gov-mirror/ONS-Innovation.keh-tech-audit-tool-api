@@ -1,3 +1,6 @@
+# Get the current AWS account ID
+data "aws_caller_identity" "current" {}
+
 # Get the ecs infrastructure outputs from the remote state data source
 data "terraform_remote_state" "vpc" {
   backend = "s3"

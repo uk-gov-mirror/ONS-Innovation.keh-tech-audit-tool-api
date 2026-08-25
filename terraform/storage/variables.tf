@@ -1,18 +1,3 @@
-variable "aws_account_id" {
-  description = "AWS Account ID"
-  type        = string
-}
-
-variable "aws_access_key_id" {
-  description = "AWS Access Key ID"
-  type        = string
-}
-
-variable "aws_secret_access_key" {
-  description = "AWS Secret Access Key"
-  type        = string
-}
-
 variable "service_subdomain" {
   description = "Service subdomain"
   type        = string
@@ -49,14 +34,4 @@ variable "business_owner_tag" {
   default     = "DST"
 }
 
-variable "container_ver" {
-  description = "Container version"
-  type        = string
-  default     = "v1.0.0"
-}
 
-variable "ecr_repository_name" {
-  description = "ECR repository name"
-  type        = string
-  default     = "sdp-dev-tech-audit-tool-api"
-}
