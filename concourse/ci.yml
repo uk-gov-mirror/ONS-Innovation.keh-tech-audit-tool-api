@@ -233,9 +233,10 @@ jobs:
         additional_tags: release-tag-output/tag
     - <<: *terraform-task
       params:
-        secrets: ((sdp_((env))_secrets_tat_api))
         github_access_token: ((github_access_token))
         env: dev
+        secrets: ((sdp_((env))_secrets_tat_api))
+        aws_role_arn: arn:aws:iam::((aws_account_sdp_dev)):role/sdp-concourse-dev
   on_failure:
       do:
         - task: notify-azure-webhook
@@ -298,6 +299,7 @@ jobs:
         github_access_token: ((github_access_token))
         env: prod
         secrets: ((sdp_prod_secrets_tat_api))
+        aws_role_arn: arn:aws:iam::((aws_account_sdp_prod)):role/sdp-concourse-prod
   on_failure:
       do:
         - task: notify-azure-webhook
